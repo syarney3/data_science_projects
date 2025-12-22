@@ -51,7 +51,7 @@ class RandomForest():
         best = fmin(fn=objective,
                     space=search_space,
                     algo=tpe.suggest,
-                    max_evals=50,
+                    max_evals=100,
                     trials=trials,
                     rstate=np.random.default_rng(RandomForest.seed))
         

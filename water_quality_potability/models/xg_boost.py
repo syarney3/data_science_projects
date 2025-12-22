@@ -1,4 +1,4 @@
-from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 import pandas as pd
 import numpy as np
 import random
@@ -7,7 +7,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
 
 
-class RandomForest():
+class XGBoost():
 
     seed = 100
     np.random.seed(seed)
@@ -25,35 +25,40 @@ class RandomForest():
         """
         
         def objective(params):
-            clf = RandomForestClassifier(n_estimators=int(params["n_estimators"]),
-                                           max_depth=int(params["max_depth"]),
-                                           min_samples_split=int(params["min_samples_split"]),
-                                           min_samples_leaf=int(params["min_samples_leaf"]),
-                                           max_features=params["max_features"],
-                                           random_state=RandomForest.seed,
-                                           n_jobs=-1)
+            clf = XGBClassifier(n_estimators=int(params["n_estimators"]),
+                                max_depth=int(params["max_depth"]),
+                                learning_rate=params["learning_rate"],
+                                subsample=params["subsample"],
+                                colsample_bytree=params["colsample_bytree"],
+                                gamma=params["gamma"],
+                                reg_alpha=params["reg_alpha"],
+                                reg_lambda=params["reg_lambda"],
+                                random_state=XGBoost.seed,
+                                eval_metric='logloss',
+                                n_jobs=-1)
 
             score = cross_val_score(clf, X, y, cv=5, scoring="roc_auc", n_jobs=-1).mean()
 
             return {"loss": -score,
                     "status": STATUS_OK}
         
-        search_space = {"n_estimators": hp.quniform("n_estimators", 100, 600, 50),
-                        "max_depth": hp.quniform("max_depth", 3, 20, 1),
-                        "min_samples_split": hp.quniform("min_samples_split", 2, 20, 1),
-                        "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 10, 1),
-                        "max_features": hp.choice("max_features", ["sqrt", "log2", None]),
-                        "criterion": hp.choice("criterion", ["gini", "entropy", "log_loss"])
-                        }
+        search_space = {"n_estimators": hp.quniform("n_estimators", 100, 1000, 50),
+                        "max_depth": hp.quniform("max_depth", 3, 10, 1),
+                        "learning_rate": hp.loguniform("learning_rate", np.log(0.01), np.log(0.3)),
+                        "subsample": hp.uniform("subsample", 0.6, 1.0),
+                        "colsample_bytree": hp.uniform("colsample_bytree", 0.6, 1.0),
+                        "gamma": hp.uniform("gamma", 0, 5),
+                        "reg_alpha": hp.uniform("reg_alpha", 0, 5),
+                        "reg_lambda": hp.uniform("reg_lambda", 0, 5)}
         
         trials = Trials()
 
         best = fmin(fn=objective,
                     space=search_space,
                     algo=tpe.suggest,
-                    max_evals=50,
+                    max_evals=100,
                     trials=trials,
-                    rstate=np.random.default_rng(RandomForest.seed))
+                    rstate=np.random.default_rng(XGBoost.seed))
         
   
         return best
@@ -73,15 +78,18 @@ class RandomForest():
         
         best_params = {"n_estimators": int(best["n_estimators"]),
                        "max_depth": int(best["max_depth"]),
-                       "min_samples_split": int(best["min_samples_split"]),
-                       "min_samples_leaf": int(best["min_samples_leaf"]),
-                       "max_features": ["sqrt", "log2", None][best["max_features"]],
-                       "criterion": ["gini", "entropy", "log_loss"][best["criterion"]],
-                       "random_state": RandomForest.seed,
+                       "learning_rate": best["learning_rate"],
+                       "subsample": best["subsample"],
+                       "colsample_bytree": best["colsample_bytree"],
+                       "gamma": best["gamma"],
+                       "reg_alpha": best["reg_alpha"],
+                       "reg_lambda": best["reg_lambda"],
+                       "random_state": XGBoost.seed,
+                       "eval_metric": 'logloss',
                        "n_jobs": -1}
         
         # Retrain final model
-        tuned_clf = RandomForestClassifier(**best_params, verbose=0)
+        tuned_clf = XGBClassifier(**best_params)
         tuned_clf.fit(X, y)
         
         return tuned_clf, best_params
@@ -140,7 +148,7 @@ class RandomForest():
         """
 
         sorted_indices = np.argsort(clf.feature_importances_)[::-1]
-        # -------------------------------
+ 
         return sorted_indices
     
     

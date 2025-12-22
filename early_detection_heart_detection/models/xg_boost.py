@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import random
 from sklearn.model_selection import cross_val_score, cross_validate, train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
 
 
@@ -14,9 +14,15 @@ class XGBoost():
     random.seed(seed)
     
     def tune_classifier(self, X, y):
-        # TODO: Tune the hyper-parameters.
-        # args: X, y
-        # return: RandomizedSearchCV
+        """
+        Tune hyper-parameters
+        Parameters:
+        X : array
+        y : array
+
+        Returns:
+        dictionary
+        """
         
         def objective(params):
             clf = XGBClassifier(n_estimators=int(params["n_estimators"]),
@@ -28,7 +34,6 @@ class XGBoost():
                                 reg_alpha=params["reg_alpha"],
                                 reg_lambda=params["reg_lambda"],
                                 random_state=XGBoost.seed,
-                                use_label_encoder=False,
                                 eval_metric='logloss',
                                 n_jobs=-1)
 
@@ -59,7 +64,17 @@ class XGBoost():
         return best
     
     
-    def tuned_classifier(self, X, y, best):
+    def fit_classifier(self, X, y, best):
+        """
+        Fit final model with optimal hyper-parameters
+        Parameters:
+        y : array
+        y_pred : array
+        best: dictionary
+
+        Returns:
+        object, dictionary
+        """
         
         best_params = {"n_estimators": int(best["n_estimators"]),
                        "max_depth": int(best["max_depth"]),
@@ -70,7 +85,6 @@ class XGBoost():
                        "reg_alpha": best["reg_alpha"],
                        "reg_lambda": best["reg_lambda"],
                        "random_state": XGBoost.seed,
-                       "use_label_encoder": False,
                        "eval_metric": 'logloss',
                        "n_jobs": -1}
         
@@ -95,37 +109,60 @@ class XGBoost():
     
     
     def accuracy(self, y, y_pred):
+        """
+        Compute Accuracy.
+        Parameters:
+        y : array
+        y_pred : array
+
+        Returns:
+        float
+        """
    
         accuracy = accuracy_score(y, np.ravel(y_pred))
     
         return accuracy
     
-    
-    def feature_importance(self, clf):
-        # TODO: Determine the feature importance as evaluated by the Random Forest Classifier.
-        # args: model object
-        # return: float array
-        
-        feature_importance = clf.feature_importances_
+    def compute_f1(self, y, y_pred):
+        """
+        Compute the F1 score.
 
-        return feature_importance
+        Parameters:
+            y_true (array-like): True labels
+            y_pred (array-like): Predicted labels
+
+        Returns:
+            float: F1 score
+        """
+        return f1_score(y, y_pred, average='binary')
     
     
     def sorted_feature_importance_indicies(self, clf):
-        # TODO: Sort them in the ascending order and return the feature numbers[0 to ...].
-        # args: model object
-        # return: int array
+        """
+        Retrieves sorted feature importance 
+        Parameters:
+        clf : object
+     
+        Returns:
+        array
+        """
 
         sorted_indices = np.argsort(clf.feature_importances_)[::-1]
-        # -------------------------------
+ 
         return sorted_indices
     
     
     def cross_validation_classifier(self, clf, X, y):
+        """
+        Performs cross-validation
+        Parameters:
+        clf : object
+        X : array
+        y: array
+
+        Returns:
+        float
+        """
         
-        # TODO: Perform cross-validation and return metrics
-        # args: classifier, predicting vars for training set, target var for training set
-        # return: f1-score, auc, and accuracy
-        
-        accuracy = cross_val_score(clf, X, np.ravel(y), cv = 5, scoring='roc_auc')
-        return accuracy
+        score = cross_val_score(clf, X, np.ravel(y), cv = 5, scoring='roc_auc')
+        return score
