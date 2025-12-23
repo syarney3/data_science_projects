@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 def cap_outliers_percentile(df: pd.DataFrame,
                             columns: list,
@@ -67,3 +67,34 @@ def label_encode_columns(df, cols):
         df_encoded[col] = le.fit_transform(df_encoded[col].astype(str))
     
     return df_encoded
+
+
+def min_max_scale_columns(df, columns):
+    """
+    Apply Min-Max scaling to specified columns of a DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame
+    columns : list
+        List of column names to scale
+    feature_range : tuple (min, max), default=(0,1)
+        Desired range for transformed data
+
+    Returns
+    -------
+    df_scaled : pd.DataFrame
+        DataFrame with specified columns scaled
+    scaler_dict : dict
+        Dictionary of fitted scalers for each column (useful for inverse transform)
+    """
+    df_scaled = df.copy()
+    scaler_dict = {}
+
+    for col in columns:
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        df_scaled[col] = scaler.fit_transform(df[[col]])
+        scaler_dict[col] = scaler
+
+    return df_scaled, scaler_dict
