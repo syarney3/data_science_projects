@@ -1,3 +1,4 @@
 venv
 similar_words_finder_app_LLM/.env
 Marketing_Campaign_App_LLM/.env
+question_answering_app_LLM/.env
